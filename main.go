@@ -1,7 +1,6 @@
 package main
  
 import (
-	"github.com/gblmar/sdkajsdk"
     "fmt"
     "log"
     "encoding/json"
