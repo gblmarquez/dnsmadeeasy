@@ -16,6 +16,7 @@ import (
 const (
 	getIpFmt	= "http://www.dnsmadeeasy.com/myip.jsp"
 	updateIpFmt = "http://www.dnsmadeeasy.com/servlet/updateip?username=%s&password=%s&id=%d&ip=%s"
+	pathFmt = "%s/../.dnsmadeeasy"
 )
 
 type Settings struct {
@@ -96,7 +97,6 @@ var exit = make(chan struct{})
 
 func doWork() {
 	log.Info("DnsMadeEasy updater is running")
-	fmt.Printf("DnsMadeEasy updater is running")
 	ticker := time.NewTicker(5 * time.Second)
 	for {
 		select {
@@ -123,7 +123,7 @@ func doWork() {
 }
 
 func stopWork() {
-	log.Info("DnsMadeEasy updater is stopping!")
+	log.Info("DnsMadeEasy updater is stopping")
 	exit <- struct{}{}
 }
 
@@ -140,7 +140,7 @@ func readSettings() Settings {
 	settings.Id = 0
 	settings.Ip = ""
 
-    filePath := fmt.Sprintf("%s/.dnsmadeeasy", usr.HomeDir)
+    filePath := fmt.Sprintf(pathFmt, usr.HomeDir)
 	if _, err := os.Stat(filePath); err == nil {
 		file, err := ioutil.ReadFile(filePath)
 		if err != nil {
@@ -167,7 +167,7 @@ func saveSettings(settings Settings) {
         log.Error("user.Current: %v", err)
     }
 
-    err = ioutil.WriteFile(fmt.Sprintf("%s/.dnsmadeeasy", usr.HomeDir), outfile, 0644)
+    err = ioutil.WriteFile(fmt.Sprintf(pathFmt, usr.HomeDir), outfile, 0644)
     if err != nil {
         log.Error("ioutil.WriteFile: %v", err)
     }
