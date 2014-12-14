@@ -5,7 +5,7 @@ import (
     "time"
     "os"
     "os/user"
-
+    "path"
     "encoding/json"
     "net/http"
     "io/ioutil"
@@ -16,7 +16,7 @@ import (
 const (
 	getIpFmt	= "http://www.dnsmadeeasy.com/myip.jsp"
 	updateIpFmt = "http://www.dnsmadeeasy.com/servlet/updateip?username=%s&password=%s&id=%d&ip=%s"
-	pathFmt = "%s/../.dnsmadeeasy"
+	fileName = ".dnsmadeeasy"
 )
 
 type Settings struct {
@@ -28,10 +28,11 @@ type Settings struct {
 }
 
 var log service.Logger
+var settingsFilePath string
 
 func main() {
-	var name = "dyndns-dnsmadeeasy"
-	var displayName = "Dynamic DNS updater for DnsMadeEasy"
+	var name = "dnsmadeeasy"
+	var displayName = "Dynamic DNS Updater"
 	var desc = "Dynamic DNS updater for DnsMadeEasy"
 
 	var s, err = service.NewService(name, displayName, desc)
@@ -79,6 +80,14 @@ func main() {
 		}
 		return
 	}
+
+	// define settings path
+	usr, err := user.Current()
+    if err != nil {
+        log.Error("user.Current: %v", err)
+    }
+    settingsFilePath = path.Join(usr.HomeDir, fileName)
+
 	err = s.Run(func() error {
 		// start
 		go doWork()
@@ -93,14 +102,24 @@ func main() {
 	}
 }
 
-var exit = make(chan struct{})
+var exit = make(chan bool)
 
 func doWork() {
-	log.Info("DnsMadeEasy updater is running")
-	ticker := time.NewTicker(5 * time.Second)
+	log.Info("Service is running with config file %s", settingsFilePath)
+
+	first := true
+	ticker := time.NewTicker(7 * time.Second)
+
+    settings := readSettings()
+	tickerUpdate := time.NewTicker(7 * time.Second)
+
 	for {
 		select {
-		case <-ticker.C:
+		case <-tickerUpdate.C:
+			if first == true {
+				tickerUpdate = time.NewTicker(time.Duration(settings.Interval) * time.Minute)
+				first = false
+			}
 
 		    settings := readSettings()
 
@@ -108,31 +127,31 @@ func doWork() {
 				settings.Ip = getExternalIp()
 
 				result := updateIp(settings.Username, settings.Password, settings.Id, settings.Ip)
-				fmt.Printf("%s\n", result)
+				if result == "success" {
+					log.Info("Updated ID %d with IP %s was success", settings.Id, settings.Ip)
+				} else {										
+					log.Error("Updated ID %d with IP %s returned %s", settings.Id, settings.Ip, result)
+				}
+			} else {
+				log.Warning("Can't update settings are empty on %s", settingsFilePath)
 			}
 
 			saveSettings(settings)
-
-			// sleep based on interval settings
-			time.Sleep(time.Duration(settings.Interval) * time.Minute)
+		case <-ticker.C:
 		case <-exit:
 			ticker.Stop()
+			tickerUpdate.Stop()
 			return
 		}
 	}
 }
 
 func stopWork() {
-	log.Info("DnsMadeEasy updater is stopping")
-	exit <- struct{}{}
+	log.Info("Service is stopping")
+	exit <- true
 }
 
-func readSettings() Settings {
-	usr, err := user.Current()
-    if err != nil {
-        log.Error("user.Current: %v", err)
-    }
-	
+func readSettings() Settings {	
 	settings := Settings{}
 	settings.Interval = 5
 	settings.Username = ""
@@ -140,17 +159,18 @@ func readSettings() Settings {
 	settings.Id = 0
 	settings.Ip = ""
 
-    filePath := fmt.Sprintf(pathFmt, usr.HomeDir)
-	if _, err := os.Stat(filePath); err == nil {
-		file, err := ioutil.ReadFile(filePath)
+	if _, err := os.Stat(settingsFilePath); err == nil {
+		file, err := ioutil.ReadFile(settingsFilePath)
 		if err != nil {
-			log.Error("ioutil.ReadFile: %v", err)
+			log.Error("readSettings : ioutil.ReadFile: %v", err)
 		}    
 
 	    err = json.Unmarshal(file, &settings)
 	    if err != nil {
-			log.Error("json.Unmarshal: %v", err)
+			log.Error("readSettings : json.Unmarshal: %v", err)
 		}
+	} else {
+		log.Warning("Creating default config file on %s", settingsFilePath)
 	}
 
 	return settings
@@ -159,17 +179,12 @@ func readSettings() Settings {
 func saveSettings(settings Settings) {
 	outfile, err := json.MarshalIndent(settings, "", "  ")
     if err != nil {
-		log.Error("json.Marshal: %v", err)
+		log.Error("saveSettings : json.Marshal: %v", err)
 	}
 
-	usr, err := user.Current()
+    err = ioutil.WriteFile(settingsFilePath, outfile, 0644)
     if err != nil {
-        log.Error("user.Current: %v", err)
-    }
-
-    err = ioutil.WriteFile(fmt.Sprintf(pathFmt, usr.HomeDir), outfile, 0644)
-    if err != nil {
-        log.Error("ioutil.WriteFile: %v", err)
+        log.Error("saveSettings : ioutil.WriteFile: %v", err)
     }
 }
 
@@ -179,12 +194,13 @@ func updateIp(username string, password string, id int, ip string) string {
 	response, err := http.Get(url)
 
 	if err != nil {
+		log.Error("updateIp : get: %v", err)
         return string("")
     } else {
         defer response.Body.Close()
         contents, err := ioutil.ReadAll(response.Body)
         if err != nil {
-            return string("")
+			log.Error("updateIp : readBody: %v", err)
         }
         return string(contents)
     }
@@ -192,12 +208,14 @@ func updateIp(username string, password string, id int, ip string) string {
 
 func getExternalIp() string {
     response, err := http.Get(getIpFmt)
-    if err != nil {
+    if err != nil {    	
+		log.Error("getExternalIp : get: %v", err)
         return string("")
     } else {
         defer response.Body.Close()
         contents, err := ioutil.ReadAll(response.Body)
         if err != nil {
+			log.Error("getExternalIp : readBody: %v", err)
             return string("")
         }
         return string(contents)
