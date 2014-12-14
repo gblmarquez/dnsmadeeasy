@@ -20,10 +20,10 @@ To install the service you run the follow command, that will install and create 
 
 `dnsmadeeasy install [USER] [PASSWORD] [RECORD_ID]`
 
-Arguments details:
-	- `USER` from your DnsMadeEasy credentials 
-	- `PASSWORD` from DnsMadeEasy credential or configured per record, so you don't need to use your account password. 
-	- `RECORD_ID` identifies the record to update.
+Arguments description:
+- `USER` from your DnsMadeEasy credentials 
+- `PASSWORD` from DnsMadeEasy credential or configured per record, so you don't need to use your account password. 
+- `RECORD_ID` identifies the record to update.
 
 ### Uninstall
 
@@ -38,16 +38,18 @@ To run the application without installing you need to use the follow command
 `dnsmadeeasy run [USER] [PASSWORD] [RECORD_ID]`
 
 Arguments details:
-	- `USER` from your DnsMadeEasy credentials 
-	- `PASSWORD` from DnsMadeEasy credential or configured per record, so you don't need to use your account password. 
-	- `RECORD_ID` identifies the record to update.
+- `USER` from your DnsMadeEasy credentials 
+- `PASSWORD` from DnsMadeEasy credential or configured per record, so you don't need to use your account password. 
+- `RECORD_ID` identifies the record to update.
 
-### Start or Stop
+### Control 
 
 To start the service use the follow command
+
 `dnsmadeeasy start`
 
 To stop the service use the follow command
+
 `dnsmadeeasy stop`
 
 ## Troubleshooting
