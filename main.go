@@ -4,26 +4,28 @@ import (
     "fmt"
     "time"
     "os"
-    "os/user"
+    "flag"
     "path"
     "encoding/json"
     "net/http"
     "io/ioutil"
+    "strconv"
 
 	"bitbucket.org/kardianos/service"
 )
 
 const (
 	getIpFmt	= "http://www.dnsmadeeasy.com/myip.jsp"
-	updateIpFmt = "http://www.dnsmadeeasy.com/servlet/updateip?username=%s&password=%s&id=%d&ip=%s"
-	fileName = ".dnsmadeeasy"
+	updateIpFmt = "http://www.dnsmadeeasy.com/servlet/updateip?username=%s&password=%s&id=%s&ip=%s"
+	fileName = "dnsmadeeasy.cfg"
+	helpCommands = "Dynamic DNS updater for DnsMadeEasy\n\nUsage:\n\n        dnsmadeeasy command [arguments]\n\n\nCommands options: \n\n  install [username] [password] [record_id]\n  remove \n  run [username] [password] [record_id]\n  start \n  stop\n"
 )
 
 type Settings struct {
 	Interval int
 	Username string
 	Password string
-	Id int
+	Id string
 	Ip string
 }
 
@@ -43,7 +45,10 @@ func main() {
 		return
 	}
 
+    settingsFilePath = path.Join(fileName)
+
 	if len(os.Args) > 1 {
+		flag.Parse()
 		var err error
 		verb := os.Args[1]
 		switch verb {
@@ -54,6 +59,15 @@ func main() {
 				return
 			}
 			fmt.Printf("Service \"%s\" installed.\n", displayName)
+
+			settings := readSettings()
+
+			settings.Username = os.Args[2]
+			settings.Password = os.Args[3]
+			settings.Id = os.Args[4]
+
+			saveSettings(settings)
+
 		case "remove":
 			err = s.Remove()
 			if err != nil {
@@ -61,8 +75,18 @@ func main() {
 				return
 			}
 			fmt.Printf("Service \"%s\" removed.\n", displayName)
-		case "run":
+		case "run":			
+
+			settings := readSettings()
+
+			settings.Username = os.Args[2]
+			settings.Password = os.Args[3]
+			settings.Id = os.Args[4]
+
+			saveSettings(settings)
+			
 			doWork()
+
 		case "start":
 			err = s.Start()
 			if err != nil {
@@ -77,16 +101,13 @@ func main() {
 				return
 			}
 			fmt.Printf("Service \"%s\" stopped.\n", displayName)
+		case "help":
+			fmt.Printf(helpCommands)
 		}
 		return
+	} else {
+		fmt.Printf(helpCommands)
 	}
-
-	// define settings path
-	usr, err := user.Current()
-    if err != nil {
-        log.Error("user.Current: %v", err)
-    }
-    settingsFilePath = path.Join(usr.HomeDir, fileName)
 
 	err = s.Run(func() error {
 		// start
@@ -122,8 +143,9 @@ func doWork() {
 			}
 
 		    settings := readSettings()
+		    id, _ := strconv.Atoi(settings.Id)
 
-		    if settings.Id > 0 {
+		    if id > 0 {
 				settings.Ip = getExternalIp()
 
 				result := updateIp(settings.Username, settings.Password, settings.Id, settings.Ip)
@@ -153,10 +175,10 @@ func stopWork() {
 
 func readSettings() Settings {	
 	settings := Settings{}
-	settings.Interval = 5
+	settings.Interval = 3
 	settings.Username = ""
 	settings.Password = ""
-	settings.Id = 0
+	settings.Id = "0"
 	settings.Ip = ""
 
 	if _, err := os.Stat(settingsFilePath); err == nil {
@@ -188,7 +210,7 @@ func saveSettings(settings Settings) {
     }
 }
 
-func updateIp(username string, password string, id int, ip string) string {
+func updateIp(username string, password string, id string, ip string) string {
 	url := fmt.Sprintf(updateIpFmt, username, password, id, ip)
 
 	response, err := http.Get(url)
