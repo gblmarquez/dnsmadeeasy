@@ -6,12 +6,14 @@ import (
     "os"
     "flag"
     "path"
+    "path/filepath"
     "encoding/json"
     "net/http"
     "io/ioutil"
     "strconv"
 
 	"bitbucket.org/kardianos/service"
+	"bitbucket.org/kardianos/osext"
 )
 
 const (
@@ -45,7 +47,8 @@ func main() {
 		return
 	}
 
-    settingsFilePath = path.Join(fileName)
+	rootPath, _ := osext.ExecutableFolder()
+    settingsFilePath, _ = filepath.Abs(path.Join(rootPath, fileName))
 
 	if len(os.Args) > 1 {
 		flag.Parse()
@@ -67,6 +70,7 @@ func main() {
 			settings.Id = os.Args[4]
 
 			saveSettings(settings)
+			fmt.Printf("Created config file on '%s'", settingsFilePath)
 
 		case "remove":
 			err = s.Remove()
@@ -126,7 +130,7 @@ func main() {
 var exit = make(chan bool)
 
 func doWork() {
-	log.Info("Service is running with config file %s", settingsFilePath)
+	log.Info("Service is running with config file '%s'", settingsFilePath)
 
 	first := true
 	ticker := time.NewTicker(7 * time.Second)
@@ -149,19 +153,18 @@ func doWork() {
 				ip := getExternalIp()
 
 				if ip != settings.Ip {
-
 					// update ip
 					settings.Ip = ip
 
 					result := updateIp(settings.Username, settings.Password, settings.Id, settings.Ip)
 					if result == "success" {
-						log.Info("Updated ID %d with IP %s was success", settings.Id, settings.Ip)
+						log.Info("Updated ID %s with IP %s was success", settings.Id, settings.Ip)
 					} else {										
-						log.Error("Updated ID %d with IP %s returned %s", settings.Id, settings.Ip, result)
+						log.Error("Updated ID %s with IP %s returned %s", settings.Id, settings.Ip, result)
 					}
 				}
 			} else {
-				log.Warning("Can't update settings are empty on %s", settingsFilePath)
+				log.Warning("Can't update settings are empty on '%s'", settingsFilePath)
 			}
 
 			saveSettings(settings)
@@ -198,7 +201,7 @@ func readSettings() Settings {
 			log.Error("readSettings : json.Unmarshal: %v", err)
 		}
 	} else {
-		log.Warning("Creating default config file on %s", settingsFilePath)
+		log.Warning("Creating default config file on '%s'", settingsFilePath)
 	}
 
 	return settings
