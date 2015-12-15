@@ -1,8 +1,8 @@
-# DnsMadeEasy DNS Update
+# DnsMadeEasy - Dynamic DNS updater
 
 [![Build Status](https://secure.travis-ci.org/gblmarquez/dnsmadeeasy.png)](https://travis-ci.org/gblmarquez/dnsmadeeasy)
 
-It works as a service on Windows, Mac, and Linux!
+It works as a deamon/service on Windows, Mac, and Linux!
 
 This is a simple tool that periodically updates your IP when it changes for [DnsMadeEasy](http://www.dnsmadeeasy.com/)'s dynamic DNS.
 
