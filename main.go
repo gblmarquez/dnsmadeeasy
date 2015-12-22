@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	getIpFmt    	= "http://www.dnsmadeeasy.com/myip.jsp"
-	updateIpFmt 	= "http://www.dnsmadeeasy.com/servlet/updateip?username=%s&password=%s&id=%s&ip=%s"
-	fileName 		= "dnsmadeeasy.cfg"
+	getIpFmt    	= "http://myip.dnsmadeeasy.com"
+	updateIpFmt 	= "http://cp.dnsmadeeasy.com/servlet/updateip?username=%s&password=%s&id=%s&ip=%s"
+	fileName 	= "dnsmadeeasy.cfg"
 	helpCommands 	= "Dynamic DNS updater for DnsMadeEasy\n\nUsage:\n\n        dnsmadeeasy command [arguments]\n\n\nCommands options: \n\n  install [username] [password] [record_id]\n  remove \n  run [username] [password] [record_id]\n  start \n  stop\n"
 )
 
